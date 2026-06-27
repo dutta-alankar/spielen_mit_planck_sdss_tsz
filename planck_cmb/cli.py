@@ -60,9 +60,9 @@ def cmd_components(args) -> int:
                      title="Quadrupole (l=2)", unit=meta["unit"])
     maps.plot_allsky(dec["octupole_map"], "04_octupole.png",
                      title="Octupole (l=3)", unit=meta["unit"])
-    out = maps.plot_allsky(dec["anisotropy_map"], "05_anisotropy.png",
-                           title="CMB anisotropy (monopole+dipole removed)",
-                           unit=meta["unit"], mask=mask)
+    maps.plot_allsky(dec["anisotropy_map"], "05_anisotropy.png",
+                     title="CMB anisotropy (monopole+dipole removed)",
+                     unit=meta["unit"], mask=mask)
     print(f"[components] figures written under {config.FIGURE_DIR}")
     return 0
 

@@ -44,7 +44,6 @@ def plot_allsky(
         Pixels with mask < 0.5 are greyed out (set to UNSEEN for display).
     """
     import healpy as hp
-    import matplotlib.pyplot as plt
 
     disp = m.astype(np.float64).copy()
     if mask is not None:

@@ -13,7 +13,7 @@ This module wraps the HEALPix spherical-harmonic machinery to:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 
@@ -38,7 +38,6 @@ class DipoleFit:
 
 def fit_monopole(m: np.ndarray, mask: Optional[np.ndarray] = None) -> float:
     """Return the mean (l=0 monopole) over the unmasked sky."""
-    import healpy as hp
 
     good = _good_pixels(m, mask)
     return float(np.mean(m[good]))
