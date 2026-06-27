@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "planck-cmb"
+version = "0.1.0"
+description = "Pipeline for Planck CMB data: anisotropy maps, power spectra, and thermal Sunyaev-Zeldovich cross-correlation with SDSS"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Alankar Dutta", email = "dutta.alankar@gmail.com" }]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+    "astropy>=5.3",
+    "healpy>=1.16",
+    "astroquery>=0.4.6",
+    "requests>=2.28",
+    "tqdm>=4.65",
+]
+
+[project.scripts]
+planck-cmb = "planck_cmb.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/alankard/planck-cmb"
+
+[tool.setuptools.packages.find]
+include = ["planck_cmb*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
