@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Optional
 
 # --------------------------------------------------------------------------- #
 # Filesystem layout
@@ -33,8 +34,12 @@ for _d in (RAW_DIR, PROCESSED_DIR, FIGURE_DIR):
 # --------------------------------------------------------------------------- #
 # Remote data products
 # --------------------------------------------------------------------------- #
-# Each entry: key -> (default_url, local_filename, human description).
+# Each entry: key -> (default_url, local_filename, human description, archive_member).
+# ``archive_member`` is None for plain files; for compressed tarballs it is the
+# basename of the member that should be extracted into the cache.
 _IRSA = "https://irsa.ipac.caltech.edu/data/Planck/release_3/all-sky-maps/maps"
+_IRSA_R3 = "https://irsa.ipac.caltech.edu/data/Planck/release_3"
+_IRSA_R2 = "https://irsa.ipac.caltech.edu/data/Planck/release_2"
 
 DATA_PRODUCTS = {
     # Component-separated CMB temperature+polarization map (SMICA, Nside=2048).
@@ -42,19 +47,22 @@ DATA_PRODUCTS = {
         f"{_IRSA}/component-maps/cmb/COM_CMB_IQU-smica_2048_R3.00_full.fits",
         "COM_CMB_IQU-smica_2048_R3.00_full.fits",
         "SMICA component-separated CMB map (I,Q,U; Nside=2048)",
+        None,
     ),
-    # Common confidence mask for the CMB analysis.
+    # Common confidence mask for the CMB analysis (lives under ancillary-data).
     "cmb_mask": (
-        f"{_IRSA}/component-maps/cmb/COM_CMB_IQU-common-Inpainting-Mask-Int_2048_R3.00.fits",
-        "COM_CMB_IQU-common-Mask-Int_2048_R3.00.fits",
+        f"{_IRSA_R3}/ancillary-data/masks/COM_Mask_CMB-common-Mask-Int_2048_R3.00.fits",
+        "COM_Mask_CMB-common-Mask-Int_2048_R3.00.fits",
         "Common intensity analysis mask (Nside=2048)",
+        None,
     ),
-    # MILCA thermal SZ Compton-y map (Nside=2048).
+    # MILCA thermal SZ Compton-y map (Nside=2048). IRSA distributes the y-maps
+    # only inside a gzipped tarball; we extract the MILCA full-sky map from it.
     "ymap_milca": (
-        "https://irsa.ipac.caltech.edu/data/Planck/release_2/all-sky-maps/maps/"
-        "component-maps/foregrounds/COM_CompMap_YSZ_R2.00.fits",
-        "COM_CompMap_YSZ_R2.00.fits",
+        f"{_IRSA_R2}/all-sky-maps/maps/component-maps/foregrounds/COM_CompMap_YSZ_R2.00.fits.tgz",
+        "milca_ymaps.fits",
         "Planck tSZ Compton-y maps (MILCA & NILC; Nside=2048)",
+        "milca_ymaps.fits",
     ),
 }
 
@@ -75,6 +83,12 @@ def local_path(key: str) -> Path:
 def describe(key: str) -> str:
     """Human-readable description of product *key*."""
     return DATA_PRODUCTS[key][2]
+
+
+def archive_member(key: str) -> Optional[str]:
+    """Return the tarball member to extract for *key*, or None for plain files."""
+    entry = DATA_PRODUCTS[key]
+    return entry[3] if len(entry) > 3 else None
 
 
 # Physical / instrument constants used across the pipeline.

@@ -54,8 +54,13 @@ def download(key: str, force: bool = False, timeout: int = 60) -> Path:
         raise RuntimeError("The 'requests' package is required to download data.")
 
     url = config.url_for(key)
-    tmp = dest.with_suffix(dest.suffix + ".part")
+    member = config.archive_member(key)
     print(f"Downloading {config.describe(key)}\n  {url}")
+
+    if member is not None:
+        return _download_archive_member(url, dest, member, timeout)
+
+    tmp = dest.with_suffix(dest.suffix + ".part")
 
     with requests.get(url, stream=True, timeout=timeout) as resp:
         resp.raise_for_status()
@@ -71,6 +76,84 @@ def download(key: str, force: bool = False, timeout: int = 60) -> Path:
             bar.close()
     os.replace(tmp, dest)
     return dest
+
+
+def _download_archive_member(url: str, dest: Path, member: str, timeout: int) -> Path:
+    """Stream a (gzipped) tar archive and extract *member* into *dest*.
+
+    The Planck y-maps are distributed only as a multi-gigabyte ``.tgz`` archive.
+    We stream it through ``tarfile`` and write out the single member we need
+    (matched by basename) without keeping the whole archive on disk.
+    """
+    import tarfile
+
+    tmp = dest.with_suffix(dest.suffix + ".part")
+    target = member.lower()
+    with requests.get(url, stream=True, timeout=timeout) as resp:
+        resp.raise_for_status()
+        total = int(resp.headers.get("Content-Length", 0))
+        bar = tqdm(total=total, unit="B", unit_scale=True,
+                   desc=Path(url).name) if tqdm else None
+
+        def _tracked(chunk_size: int = 1 << 20):
+            for chunk in resp.iter_content(chunk_size=chunk_size):
+                if chunk and bar:
+                    bar.update(len(chunk))
+                yield chunk
+
+        # Wrap the response stream so tarfile can read it sequentially.
+        stream = _ChunkReader(_tracked())
+        extracted = False
+        with tarfile.open(fileobj=stream, mode="r|*") as tar:
+            for info in tar:
+                if not info.isfile():
+                    continue
+                if Path(info.name).name.lower() == target:
+                    src = tar.extractfile(info)
+                    if src is None:
+                        continue
+                    with open(tmp, "wb") as fh:
+                        while True:
+                            block = src.read(1 << 20)
+                            if not block:
+                                break
+                            fh.write(block)
+                    extracted = True
+                    break
+        if bar:
+            bar.close()
+
+    if not extracted:
+        if tmp.exists():
+            tmp.unlink()
+        raise RuntimeError(
+            f"Archive member '{member}' not found in {url}")
+    os.replace(tmp, dest)
+    return dest
+
+
+class _ChunkReader:
+    """Minimal file-like adapter turning a byte-chunk iterator into a stream."""
+
+    def __init__(self, chunks):
+        self._chunks = iter(chunks)
+        self._buf = b""
+
+    def read(self, size: int = -1) -> bytes:
+        if size is None or size < 0:
+            parts = [self._buf]
+            self._buf = b""
+            parts.extend(self._chunks)
+            return b"".join(parts)
+        while len(self._buf) < size:
+            try:
+                chunk = next(self._chunks)
+            except StopIteration:
+                break
+            if chunk:
+                self._buf += chunk
+        out, self._buf = self._buf[:size], self._buf[size:]
+        return out
 
 
 # --------------------------------------------------------------------------- #

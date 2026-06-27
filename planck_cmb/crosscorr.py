@@ -15,6 +15,7 @@ Both come with a simple significance estimate from bootstrap/random trials.
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -62,7 +63,14 @@ def stacked_profile(
         arr = np.vstack(rows) if rows else np.full((1, r_c.size), np.nan)
         # Per-bin number of objects that actually had pixels in that bin.
         n_eff = np.maximum(np.sum(np.isfinite(arr), axis=0), 1)
-        with np.errstate(invalid="ignore"):
+        # Bins with no finite samples yield all-NaN slices; nanmean/nanstd warn
+        # on those, so silence the (expected) empty-slice warnings and let the
+        # nan_to_num below turn the resulting NaNs into zeros.
+        with np.errstate(invalid="ignore"), warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Mean of empty slice",
+                                    category=RuntimeWarning)
+            warnings.filterwarnings("ignore", message="Degrees of freedom <= 0",
+                                    category=RuntimeWarning)
             mean = np.nanmean(arr, axis=0)
             err = np.nanstd(arr, axis=0) / np.sqrt(n_eff)
         return np.nan_to_num(mean), np.nan_to_num(err)
